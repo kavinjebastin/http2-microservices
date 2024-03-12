@@ -1,7 +1,9 @@
 import express from "express";
+import { ChildProcess } from "node:child_process";
 import fs from "node:fs";
 const http2 = await import("node:http2");
 const app = express();
+const fsPromise = fs.promises;
 
 app
   .get("/", (request, response) => {
@@ -28,6 +30,15 @@ app
     });
     req.on("end", () => {
       response.status(200).json(JSON.parse(data));
+      const filePath = "../response/response.json";
+      fsPromise
+        .writeFile(filePath, data, { encoding: "utf-8" })
+        .then((_) => {
+          console.log("file write complete");
+        })
+        .catch((error) =>
+          console.log("file writing failed, errror => ", error),
+        );
       client.close();
     });
     req.end();
