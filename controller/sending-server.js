@@ -17,16 +17,16 @@ server.on("stream", (stream, headers) => {
 
   stream.write("[", encoding);
   engineJSON.forEach((itinerary, index, array) => {
+    const stringItinerary = (index !== array.length - 1) ? `${JSON.stringify(itinerary)},` : JSON.stringify(itinerary);
     stream.write(
-      JSON.stringify(itinerary),
+      stringItinerary,
       encoding,
       (error) => error && console.error(error),
     );
-    if (index !== array.length - 1) stream.write(",", encoding);
   });
 
   stream.end("]");
 });
 
 server.listen(5500);
-console.log("server is ready to send hello world");
+console.log("server is ready to send Array of itineraries");
