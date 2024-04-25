@@ -1,45 +1,42 @@
 import express from "express";
 import fs from "node:fs";
+import logger from "../utils/logger.js";
 const http2 = await import("node:http2");
+import { URL as url } from "./sending-server.js";
 const app = express();
 const fsPromise = fs.promises;
 
-app
-  .get("/", (request, response) => {
-    response.type("application/json");
-    const client = http2.connect("https://localhost:5500", {
-      ca: fs.readFileSync("../credentials/localhost-cert.pem"),
-    });
-    client.on("error", (err) => err && console.error(err));
+const client = http2.connect(url, {
+  ca: fs.readFileSync("../credentials/localhost-cert.pem"),
+});
+logger.info("certificate readed successfully");
+client.on("error", (err) => {
+  logger.error(`Error occurred while trying to get a response ${err.message}`);
+});
 
-    const req = client.request({
-      ":path": "/",
-    });
+const req = client.request({
+  ":path": "/",
+});
 
-    req.on("response", (headers, flags) => {
-      for (const name in headers) {
-        console.log(`${name}: ${headers[name]}`);
-      }
-    });
+req.on("response", (headers, flags) => {
+  for (const [key, value] in headers) {
+    logger.info(`${key}: ${value}`);
+  }
+});
 
-    req.setEncoding("utf8");
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk;
-    });
-    req.on("end", () => {
-      response.status(200).json(JSON.parse(data));
-      const filePath = "../response/response.json";
-      fsPromise
-        .writeFile(filePath, data, { encoding: "utf-8" })
-        .then((_) => {
-          console.log("file write complete");
-        })
-        .catch((error) =>
-          console.log("file writing failed, errror => ", error),
-        );
-      client.close();
-    });
-    req.end();
-  })
-  .listen(5000);
+req.setEncoding("utf8");
+let data = "";
+req.on("data", (chunk) => {
+  data += chunk;
+});
+req.on("end", () => {
+  const filePath = "../response/response.json";
+  fsPromise
+    .writeFile(filePath, data, { encoding: "utf-8" })
+    .then((_) => {
+      logger.info("file write complete");
+    })
+    .catch((error) => logger.info("file writing failed, errror => ", error));
+  client.close();
+});
+req.end();
